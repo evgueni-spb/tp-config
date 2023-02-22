@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.configMapDb.name }}
+data:
+  dbUrl: {{ .Values.configMapDb.dbUrl}}
+  dbUser: {{ .Values.configMapDb.dbUser}}
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.configMapUser.name }}
+data:
+  username: {{ .Values.configMapUser.username}}
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.configMapFile.name }}
+data:
+  config.json: {{ .Values.configMapFile.contents | toJson | quote }}
