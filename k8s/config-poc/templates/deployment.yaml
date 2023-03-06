@@ -40,6 +40,12 @@ spec:
           volumeMounts:
             - name: user-config-volume
               mountPath: /etc/user-config
+            - name: file-config-volume
+              mountPath: /etc/file-config
+            - name: yaml-file-volume
+              mountPath: /etc/yaml-file-config
+            - name: secret-volume
+              mountPath: /etc/secrets
         #  livenessProbe:
         #    httpGet:
         #      path: /
@@ -54,6 +60,69 @@ spec:
         - name: user-config-volume
           configMap:
             name: {{ .Values.configMapUser.name }}
+        - name: file-config-volume
+          configMap:
+            name: {{ .Values.configMapFile.name }}
+        - name: yaml-file-volume
+          configMap:
+            name: yaml-file-config
+        - name: secret-volume
+          secret:
+            secretName: simple-secret
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "config-poc.fullname" . }}-control-panel
+  labels:
+    {{- include "controlPanel.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.controlPanel.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "controlPanel.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "controlPanel.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "controlPanel.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.controlPanel.image.repository }}:{{ .Values.controlPanel.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.controlPanel.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8090
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

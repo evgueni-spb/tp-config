@@ -18,7 +18,7 @@ If release name contains chart name it will be used as a full name.
 {{- if contains $name .Release.Name }}
 {{- .Release.Name | trunc 63 | trimSuffix "-" }}
 {{- else }}
-{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" }}
+{{- printf "%s" $name | trunc 63 | trimSuffix "-" }}
 {{- end }}
 {{- end }}
 {{- end }}
@@ -50,6 +50,30 @@ app.kubernetes.io/name: {{ include "config-poc.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
+
+{{/*
+Common labels for Control Panel
+*/}}
+{{- define "controlPanel.labels" -}}
+helm.sh/chart: {{ include "config-poc.chart" . }}
+{{ include "controlPanel.selectorLabels" . }}
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end }}
+
+{{/*
+Selector labels for Control Panel
+*/}}
+{{- define "controlPanel.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "config-poc.name" . }}-control-panel
+app.kubernetes.io/instance: {{ .Release.Name }}-control-panel
+{{- end }}
+
+
+
+
 {{/*
 Create the name of the service account to use
 */}}
@@ -58,5 +82,17 @@ Create the name of the service account to use
 {{- default (include "config-poc.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
+{{- end }}
+{{- end }}
+
+
+{{/*
+Create the name of the service account to use
+*/}}
+{{- define "controlPanel.serviceAccountName" -}}
+{{- if .Values.controlPanel.serviceAccount.create }}
+{{- default (include "config-poc.fullname" .) .Values.controlPanel.serviceAccount.name }}
+{{- else }}
+{{- default "default" .Values.controlPanel.serviceAccount.name }}
 {{- end }}
 {{- end }}

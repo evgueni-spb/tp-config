@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "config-poc.fullname" . }}
+  name: {{ include "config-poc.fullname" . }}-svc
   labels:
     {{- include "config-poc.labels" . | nindent 4 }}
 spec:
@@ -10,6 +10,27 @@ spec:
     - port: {{ .Values.service.port }}
       targetPort: {{ .Values.service.targetPort }}
       protocol: TCP
-      name: http
+      name: http2
   selector:
     {{- include "config-poc.selectorLabels" . | nindent 4 }}
+
+
+---
+
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "config-poc.fullname" . }}-control-panel-svc
+  labels:
+    {{- include "controlPanel.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.controlPanel.service.type }}
+  ports:
+    - port: {{ .Values.controlPanel.service.port }}
+      targetPort: {{ .Values.controlPanel.service.targetPort }}
+      protocol: TCP
+      name: http1
+  selector:
+    {{- include "controlPanel.selectorLabels" . | nindent 4 }}
+

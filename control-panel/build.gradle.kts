@@ -21,6 +21,8 @@ dependencies {
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
 	implementation("io.kubernetes:client-java:17.0.1")
+	implementation("org.apache.kafka:kafka-clients:3.4.0")
+	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.0.2")
 	developmentOnly("org.springframework.boot:spring-boot-devtools")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 }

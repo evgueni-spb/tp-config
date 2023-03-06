@@ -21,3 +21,18 @@ metadata:
   name: {{ .Values.configMapFile.name }}
 data:
   config.json: {{ .Values.configMapFile.contents | toJson | quote }}
+  another_config.json: |
+    {"name":"Evgueni","age":52}
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: yaml-file-config
+data:
+  config.yml: |
+    app-name: billing app
+    status: active
+    billing-mode:
+      payment-plan: monthly
+      deposit: enabled
