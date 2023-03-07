@@ -5,11 +5,7 @@ import io.kubernetes.client.openapi.ApiException
 import io.kubernetes.client.openapi.apis.AppsV1Api
 import io.kubernetes.client.openapi.apis.CoreV1Api
 import io.kubernetes.client.openapi.apis.NetworkingV1Api
-import io.kubernetes.client.openapi.models.V1ConfigMap
-import io.kubernetes.client.openapi.models.V1Deployment
-import io.kubernetes.client.openapi.models.V1PodList
-import io.kubernetes.client.openapi.models.V1Secret
-import io.kubernetes.client.openapi.models.V1Service
+import io.kubernetes.client.openapi.models.*
 import io.kubernetes.client.util.Config
 import io.kubernetes.client.util.PatchUtils
 import io.kubernetes.client.util.wait.Wait
@@ -199,7 +195,7 @@ class ConfigService {
             ?.putAnnotationsItem("kubectl.kubernetes.io/restartedAt", LocalDateTime.now().toString())
         runningDeployment
             .getSpec()
-            ?.replicas=param.toInt()
+            ?.replicas = param.toInt()
 
 
         try {
@@ -227,13 +223,13 @@ class ConfigService {
             // Wait until deployment has stabilized after rollout restart
             val processLambda: () -> Boolean = { ->
 
-                println ("Waiting for READY status")
+                println("Waiting for READY status")
                 val readyReplicas = appsApi
                     .readNamespacedDeployment(deploymentName, namespace, null)
                     .status
                     ?.readyReplicas
 
-               readyReplicas!! > 0
+                readyReplicas!! > 0
             }
 
             Wait.poll(
@@ -244,7 +240,7 @@ class ConfigService {
 
             return "Done"
 
-        }catch (e: ApiException){
+        } catch (e: ApiException) {
             return e.responseBody
         }
 
@@ -253,7 +249,7 @@ class ConfigService {
 
     fun changeJsonFileInConfigMap(param: String) {
 
-        val updatedFile= "{\\\"position\\\": \\\"Lead architect\\\", \\\"status\\\": \\\"active\\\"}"
+        val updatedFile = "{\\\"position\\\": \\\"Lead architect\\\", \\\"status\\\": \\\"active\\\"}"
 
         val patch = "[{\"op\":\"replace\",\"path\":\"/data/config.json\",\"value\":\"$updatedFile\"}]"
 
@@ -281,11 +277,12 @@ class ConfigService {
         )
     }
 
-    fun strategicMergeChangeJsonFile(){
+    fun strategicMergeChangeJsonFile() {
         //another_config.json: |
         //    {"name":"Evgueni","age":52}
 
-        val patchString="{\\\"data\\\": {\\\"another_config.json\\\": \\\"{\\\\\\\"name\\\\\\\":\\\\\\\"Evgeny\\\\\\\",\\\\\\\"age\\\\\\\":52}\\\"}}"
+        val patchString =
+            "{\\\"data\\\": {\\\"another_config.json\\\": \\\"{\\\\\\\"name\\\\\\\":\\\\\\\"Evgeny\\\\\\\",\\\\\\\"age\\\\\\\":52}\\\"}}"
 
         val api = CoreV1Api(client)
 
@@ -313,7 +310,7 @@ class ConfigService {
 
     }
 
-    fun changeYamlFile(){
+    fun changeYamlFile() {
 
         //app-name: billing app
         //    status: active
@@ -322,7 +319,7 @@ class ConfigService {
         //      deposit: enabled
 
 
-        val updatedFile= "app-name: billing app\\n" +
+        val updatedFile = "app-name: billing app\\n" +
                 "status: active\\n" +
                 "billing-mode:\\n" +
                 "  payment-plan: yearly\\n" +
@@ -354,8 +351,8 @@ class ConfigService {
         )
     }
 
-    fun changeSecret(){
-        val updatedFile= "bW9kaWZpZWRzZWNyZXQK"
+    fun changeSecret() {
+        val updatedFile = "bW9kaWZpZWRzZWNyZXQK"
 
         val patch = "[{\"op\":\"replace\",\"path\":\"/data/.secret-file\",\"value\":\"$updatedFile\"}]"
 
@@ -382,6 +379,110 @@ class ConfigService {
             /* apiClient = */ client
         )
     }
+
+    fun replacePod(): String {
+
+        val api = CoreV1Api(client)
+        val podList = api.listNamespacedPod("default", null, null, null, null, null, null, null, null, null, null)
+        var result = "empty"
+        var modifiedPod: V1Pod? = null
+
+        for (item in podList.items) {
+            if (item.metadata?.name.equals("testcurl2")) {
+                modifiedPod = item
+                val spec = modifiedPod.spec?.containers?.listIterator()?.forEach {
+                    it.command.let {
+                        it?.set(1, "5000")
+                    }
+                }
+            }
+        }
+
+
+            val patchedPodJSON=client.json.serialize(modifiedPod)
+
+            val patchLambda: () -> Call = { ->
+                api.replaceNamespacedPodCall("testcurl2", "default", modifiedPod, null, null, "kubectl-rollout", null, null)
+            }
+
+
+            PatchUtils.patch(/* apiTypeClass = */ V1Pod::class.java,
+                /* callFunc = */ patchLambda,
+                /* patchFormat = */ V1Patch.PATCH_FORMAT_STRATEGIC_MERGE_PATCH,
+                /* apiClient = */ client
+            )
+
+        return result
+    }
+
+
+    fun modifyDeploymentLabels(): String {
+
+        val appsApi = AppsV1Api(client)
+        // Trigger a rollout restart of the example deployment
+        val deploymentName = "config-poc"
+        val namespace = "default"
+        val runningDeployment = appsApi.readNamespacedDeployment(deploymentName, namespace, null);
+
+        // Explicitly set "restartedAt" annotation with current date/time to trigger rollout when patch
+        // is applied
+
+        runningDeployment
+            .getSpec()
+            ?.getTemplate()
+            ?.getMetadata()
+            ?.putAnnotationsItem("kubectl.kubernetes.io/restartedAt", LocalDateTime.now().toString())
+  /*      runningDeployment
+            .getSpec()
+            ?.replicas = 2
+*/
+        runningDeployment
+            .getSpec()
+            ?.getTemplate()
+            ?.getMetadata()
+            ?.putLabelsItem("helm.sh/chart","config-poc-0.1.1")
+
+        runningDeployment
+            .metadata
+            ?.putLabelsItem("inno.tech/testlabel","test-value")
+
+        runningDeployment
+            .metadata
+            ?.putAnnotationsItem("inno.tech/testannotation","test annotation value")
+
+
+
+        try {
+            val deploymentJson = client.getJSON().serialize(runningDeployment);
+
+            PatchUtils.patch(
+                V1Deployment::class.java,
+                {
+                    appsApi.patchNamespacedDeploymentCall(
+                        deploymentName,
+                        namespace,
+                        V1Patch(deploymentJson),
+                        null,
+                        null,
+                        "kubectl-rollout",
+                        null,
+                        null,
+                        null
+                    )
+                },
+                V1Patch.PATCH_FORMAT_STRATEGIC_MERGE_PATCH,
+                client
+            )
+
+            return "Done"
+
+        } catch (e: ApiException) {
+            return e.responseBody
+        }
+
+    }
+
+
 
     fun changeKafkaConfig(param: String) {
 

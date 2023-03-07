@@ -77,6 +77,21 @@ class ConfigController (private val configService: ConfigService) {
         val data=configService.changeSecret()
         return "Done"
     }
+
+    @PostMapping("/replace-pod")
+    @ResponseBody
+    fun replacePod(@RequestBody body:String): String{
+        val data=configService.replacePod()
+        return data
+    }
+
+
+    @PostMapping("/labels")
+    @ResponseBody
+    fun modifyDeploymentLabels(@RequestBody body:String): String{
+        val data=configService.modifyDeploymentLabels()
+        return data
+    }
 }
 
 class KafkaConfig (val param: String, val topic: String){}

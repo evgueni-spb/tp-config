@@ -1,0 +1,4 @@
+configMapGenerator:
+- name: generated-cm
+  files:
+  - config.properties
